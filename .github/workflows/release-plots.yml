@@ -1,0 +1,47 @@
+name: Generate and publish plots
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to which the archive will be uploaded
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  generate-plots:
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      ARCHIVE_NAME: distribution-plots-${{ github.event.release.tag_name || inputs.tag }}.zip
+
+    steps:
+      - name: Check out release source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.14"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Generate plots
+        run: uv run python main.py --output-dir distribution_plots --dpi 300 --silence
+
+      - name: Create ZIP archive
+        run: zip -r "$ARCHIVE_NAME" distribution_plots
+
+      - name: Upload archive to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$RELEASE_TAG" "$ARCHIVE_NAME" --clobber
