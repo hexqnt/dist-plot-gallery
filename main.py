@@ -23,7 +23,7 @@ Pdf = Callable[[Array], Array]
 
 # Общие параметры оформления и рендеринга графиков.
 COLORS = ("#e41a1c", "#ff9800", "#00c853", "#222222", "#2962ff", "#d500f9")
-FIGURE_SIZE = (7, 5)
+FIGURE_SIZE = (5, 4)
 FIGURE_LAYOUT = "constrained"
 DEFAULT_DPI = 180
 FIGURE_FACE_COLOR = "#f7f7f7"
@@ -31,6 +31,7 @@ CURVE_SAMPLES = 1_500
 
 TITLE_FONT_SIZE = 15
 TITLE_PADDING = 12
+LABEL_FONT_SIZE = 10
 X_AXIS_LABEL = "y"
 CONTINUOUS_Y_AXIS_LABEL = "probability density"
 DISCRETE_Y_AXIS_LABEL = "probability mass"
@@ -58,7 +59,7 @@ MASS_ENDPOINTS = (0.0, 1.0)
 
 LEGEND_STYLE = {
     "loc": "upper right",
-    "fontsize": 10,
+    "fontsize": LABEL_FONT_SIZE,
     "frameon": True,
     "facecolor": "white",
     "framealpha": 0.88,
@@ -786,8 +787,9 @@ MIXED: tuple[MixedChart, ...] = (
 
 def style_axis(ax: plt.Axes, title: str, ylabel: str) -> None:
     ax.set_title(title, fontsize=TITLE_FONT_SIZE, pad=TITLE_PADDING)
-    ax.set_xlabel(X_AXIS_LABEL)
-    ax.set_ylabel(ylabel)
+    ax.set_xlabel(X_AXIS_LABEL, fontsize=LABEL_FONT_SIZE)
+    ax.set_ylabel(ylabel, fontsize=LABEL_FONT_SIZE)
+    ax.tick_params(axis="both", labelsize=LABEL_FONT_SIZE)
     ax.grid(
         which="major",
         axis="both",
