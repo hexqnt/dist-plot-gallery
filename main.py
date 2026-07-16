@@ -25,7 +25,7 @@ Pdf = Callable[[Array], Array]
 COLORS = ("#e41a1c", "#ff9800", "#00c853", "#222222", "#2962ff", "#d500f9")
 FIGURE_SIZE = (5, 4)
 FIGURE_LAYOUT = "constrained"
-DEFAULT_DPI = 180
+DEFAULT_DPI = 300
 FIGURE_FACE_COLOR = "#f7f7f7"
 CURVE_SAMPLES = 1_500
 

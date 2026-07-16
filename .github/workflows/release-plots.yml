@@ -1,6 +1,8 @@
 name: Generate and publish plots
 
 on:
+  push:
+    branches: [master]
   release:
     types: [published]
   workflow_dispatch:
@@ -16,15 +18,10 @@ permissions:
 jobs:
   generate-plots:
     runs-on: ubuntu-latest
-    env:
-      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
-      ARCHIVE_NAME: distribution-plots-${{ github.event.release.tag_name || inputs.tag }}.zip
 
     steps:
-      - name: Check out release source
+      - name: Check out source
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.release.tag_name || inputs.tag }}
 
       - name: Install uv and Python
         uses: astral-sh/setup-uv@v7
@@ -36,12 +33,36 @@ jobs:
         run: uv sync
 
       - name: Generate plots
-        run: uv run python main.py --output-dir distribution_plots --dpi 300 --silence
+        run: uv run python main.py --output-dir distribution_plots --silence
+
+      - name: Set release metadata
+        id: release
+        env:
+          EVENT_RELEASE_TAG: ${{ github.event.release.tag_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            version=$(sed -nE 's/^version = "([^"]+)"/\1/p' pyproject.toml)
+            test -n "$version"
+            tag="v${version}-build.${GITHUB_RUN_NUMBER}"
+          else
+            tag="${EVENT_RELEASE_TAG:-$INPUT_TAG}"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "archive=distribution-plots-$tag.zip" >> "$GITHUB_OUTPUT"
 
       - name: Create ZIP archive
-        run: zip -r "$ARCHIVE_NAME" distribution_plots
+        run: zip -r "${{ steps.release.outputs.archive }}" distribution_plots
 
-      - name: Upload archive to GitHub Release
+      - name: Create or update GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "$RELEASE_TAG" "$ARCHIVE_NAME" --clobber
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          ARCHIVE_NAME: ${{ steps.release.outputs.archive }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            gh release create "$RELEASE_TAG" "$ARCHIVE_NAME" \
+              --target "$GITHUB_SHA" --generate-notes
+          else
+            gh release upload "$RELEASE_TAG" "$ARCHIVE_NAME" --clobber
+          fi
