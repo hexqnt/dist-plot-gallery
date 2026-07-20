@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Создаёт графики распределений с разной параметризацией"""
+"""Создаёт графики распределений с разной параметризацией."""
 
 from __future__ import annotations
 
@@ -312,6 +312,24 @@ def zaga_curve(
     )
 
 
+def geometric_mean_pmf(k: Array, mean: float) -> Array:
+    """PMF числа неудач до первого успеха при заданном среднем."""
+    probability = 1 / (1 + mean)
+    return stats.geom.pmf(k + 1, probability)
+
+
+def beta_binomial_pmf(
+    k: Array,
+    trials: int,
+    probability: float,
+    precision: float,
+) -> Array:
+    """Beta-binomial PMF в mean/precision-параметризации gamlss-family."""
+    alpha = probability * precision
+    beta = (1 - probability) * precision
+    return stats.betabinom.pmf(k, trials, alpha, beta)
+
+
 CONTINUOUS: tuple[ContinuousChart, ...] = (
     ContinuousChart(
         "normal",
@@ -319,7 +337,7 @@ CONTINUOUS: tuple[ContinuousChart, ...] = (
         (-5, 5),
         (
             Curve(r"$\mu=0,\ \sigma=0.5$", lambda x: stats.norm.pdf(x, 0, 0.5)),
-            Curve(r"$\mu=0,\ \sigma=1$", lambda x: stats.norm.pdf(x)),
+            Curve(r"$\mu=0,\ \sigma=1$", stats.norm.pdf),
             Curve(r"$\mu=1.5,\ \sigma=1$", lambda x: stats.norm.pdf(x, 1.5)),
         ),
     ),
@@ -605,6 +623,77 @@ CONTINUOUS: tuple[ContinuousChart, ...] = (
             for p in ((0, 1, 1, 1), (0, 1, 0.5, 1), (0, 1, 1, 0.6), (0, 1, 1, 1.7))
         ),
     ),
+    ContinuousChart(
+        "rayleigh",
+        "Rayleigh distribution (scale)",
+        (0, 9),
+        (
+            Curve(r"$\sigma=0.75$", lambda x: stats.rayleigh.pdf(x, scale=0.75)),
+            Curve(r"$\sigma=1.5$", lambda x: stats.rayleigh.pdf(x, scale=1.5)),
+            Curve(r"$\sigma=2.5$", lambda x: stats.rayleigh.pdf(x, scale=2.5)),
+        ),
+    ),
+    ContinuousChart(
+        "log_logistic",
+        "Log-logistic distribution (scale/shape)",
+        (0.001, 12),
+        (
+            Curve(
+                r"$\alpha=1.5,\ \beta=1.5$",
+                lambda x: stats.fisk.pdf(x, 1.5, scale=1.5),
+            ),
+            Curve(
+                r"$\alpha=2.5,\ \beta=3$",
+                lambda x: stats.fisk.pdf(x, 3, scale=2.5),
+            ),
+            Curve(r"$\alpha=5,\ \beta=5$", lambda x: stats.fisk.pdf(x, 5, scale=5)),
+        ),
+    ),
+    ContinuousChart(
+        "chi_squared",
+        "Chi-squared distribution (DF)",
+        (0.05, 20),
+        (
+            Curve(r"$\nu=1$", lambda x: stats.chi2.pdf(x, 1)),
+            Curve(r"$\nu=2$", lambda x: stats.chi2.pdf(x, 2)),
+            Curve(r"$\nu=5$", lambda x: stats.chi2.pdf(x, 5)),
+            Curve(r"$\nu=10$", lambda x: stats.chi2.pdf(x, 10)),
+        ),
+    ),
+    ContinuousChart(
+        "chi",
+        "Chi distribution (degrees of freedom)",
+        (0.001, 6),
+        (
+            Curve(r"$\nu=1$", lambda x: stats.chi.pdf(x, 1)),
+            Curve(r"$\nu=2$", lambda x: stats.chi.pdf(x, 2)),
+            Curve(r"$\nu=5$", lambda x: stats.chi.pdf(x, 5)),
+            Curve(r"$\nu=10$", lambda x: stats.chi.pdf(x, 10)),
+        ),
+    ),
+    ContinuousChart(
+        "generalized_pareto",
+        "Generalized Pareto (scale/shape)",
+        (0, 12),
+        (
+            Curve(
+                r"$\sigma=2,\ \xi=-0.25$",
+                lambda x: stats.genpareto.pdf(x, -0.25, scale=2),
+            ),
+            Curve(
+                r"$\sigma=2,\ \xi=0$",
+                lambda x: stats.genpareto.pdf(x, 0, scale=2),
+            ),
+            Curve(
+                r"$\sigma=2,\ \xi=0.25$",
+                lambda x: stats.genpareto.pdf(x, 0.25, scale=2),
+            ),
+            Curve(
+                r"$\sigma=4,\ \xi=0.5$",
+                lambda x: stats.genpareto.pdf(x, 0.5, scale=4),
+            ),
+        ),
+    ),
 )
 
 DISCRETE: tuple[DiscreteChart, ...] = (
@@ -616,6 +705,74 @@ DISCRETE: tuple[DiscreteChart, ...] = (
             (r"$p=0.2$", lambda k: stats.bernoulli.pmf(k, 0.2)),
             (r"$p=0.5$", lambda k: stats.bernoulli.pmf(k, 0.5)),
             (r"$p=0.8$", lambda k: stats.bernoulli.pmf(k, 0.8)),
+        ),
+    ),
+    DiscreteChart(
+        "geometric",
+        "Geometric distribution (mean)",
+        25,
+        (
+            (r"$\mu=1$", lambda k: geometric_mean_pmf(k, 1)),
+            (r"$\mu=3$", lambda k: geometric_mean_pmf(k, 3)),
+            (r"$\mu=7$", lambda k: geometric_mean_pmf(k, 7)),
+        ),
+    ),
+    DiscreteChart(
+        "binomial_fixed_trials",
+        "Binomial distribution (fixed trials, n=12)",
+        12,
+        (
+            (r"$p=0.2$", lambda k: stats.binom.pmf(k, 12, 0.2)),
+            (r"$p=0.5$", lambda k: stats.binom.pmf(k, 12, 0.5)),
+            (r"$p=0.8$", lambda k: stats.binom.pmf(k, 12, 0.8)),
+        ),
+    ),
+    DiscreteChart(
+        "binomial_varying_trials",
+        "Binomial distribution (varying trials)",
+        20,
+        (
+            (r"$n=6,\ p=0.3$", lambda k: stats.binom.pmf(k, 6, 0.3)),
+            (r"$n=12,\ p=0.5$", lambda k: stats.binom.pmf(k, 12, 0.5)),
+            (r"$n=20,\ p=0.7$", lambda k: stats.binom.pmf(k, 20, 0.7)),
+        ),
+    ),
+    DiscreteChart(
+        "categorical",
+        "Categorical distribution (K=4)",
+        3,
+        (
+            (
+                r"$\mathbf{p}=(0.25,0.25,0.25,0.25)$",
+                lambda k: np.array([0.25, 0.25, 0.25, 0.25])[k],
+            ),
+            (
+                r"$\mathbf{p}=(0.55,0.20,0.15,0.10)$",
+                lambda k: np.array([0.55, 0.20, 0.15, 0.10])[k],
+            ),
+            (
+                r"$\mathbf{p}=(0.10,0.15,0.25,0.50)$",
+                lambda k: np.array([0.10, 0.15, 0.25, 0.50])[k],
+            ),
+        ),
+    ),
+    DiscreteChart(
+        "beta_binomial",
+        "Beta-binomial (mean/precision, n=20)",
+        20,
+        (
+            (
+                r"$\mu=0.3,\ \phi=3$",
+                lambda k: beta_binomial_pmf(k, 20, 0.3, 3),
+            ),
+            (
+                r"$\mu=0.5,\ \phi=10$",
+                lambda k: beta_binomial_pmf(k, 20, 0.5, 10),
+            ),
+            (
+                r"$\mu=0.7,\ \phi=40$",
+                lambda k: beta_binomial_pmf(k, 20, 0.7, 40),
+            ),
         ),
     ),
     DiscreteChart(
@@ -822,12 +979,17 @@ def draw_discrete(chart: DiscreteChart, output_dir: Path, dpi: int) -> None:
     for color, (label, pmf) in zip(COLORS, chart.curves, strict=False):
         ax.vlines(k, 0, pmf(k), color=color, alpha=STEM_ALPHA, lw=STEM_LINE_WIDTH)
         ax.plot(
-            k, pmf(k), MARKER_STYLE, color=color, ms=DISCRETE_MARKER_SIZE, label=label
+            k,
+            pmf(k),
+            MARKER_STYLE,
+            color=color,
+            ms=DISCRETE_MARKER_SIZE,
+            label=label,
         )
     style_axis(ax, chart.title, DISCRETE_Y_AXIS_LABEL)
     ax.set_xlim(-DISCRETE_X_MARGIN, chart.xmax + DISCRETE_X_MARGIN)
     ax.set_xticks(
-        np.arange(0, chart.xmax + 1, max(1, chart.xmax // DISCRETE_TICK_COUNT))
+        np.arange(0, chart.xmax + 1, max(1, chart.xmax // DISCRETE_TICK_COUNT)),
     )
     ax.legend(**LEGEND_STYLE)
     chart_dir = output_dir / chart.slug
