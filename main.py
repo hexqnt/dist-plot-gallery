@@ -150,6 +150,67 @@ def power_exponential(mu: float, sigma: float, nu: float) -> Curve:
     )
 
 
+def skew_power_exponential(
+    mode: float,
+    scale: float,
+    skew_ratio: float,
+    power: float,
+) -> Curve:
+    """Fernandez--Steel two-piece power-exponential in mode/base-scale form."""
+    standardized_scale = np.exp(
+        0.5 * (special.gammaln(1 / power) - special.gammaln(3 / power)),
+    )
+    normalizer = 2 / (skew_ratio + 1 / skew_ratio)
+
+    def pdf(x: Array) -> Array:
+        standardized = (x - mode) / scale
+        side_adjusted = np.where(
+            standardized < 0,
+            standardized * skew_ratio,
+            standardized / skew_ratio,
+        )
+        return normalizer * stats.gennorm.pdf(
+            side_adjusted,
+            power,
+            scale=standardized_scale,
+        ) / scale
+
+    return Curve(
+        rf"$\mu={mode:g},\ \sigma={scale:g},\ r={skew_ratio:g},\ p={power:g}$",
+        pdf,
+    )
+
+
+def skew_power_exponential_mean_sd(
+    mean: float,
+    sd: float,
+    skew_ratio: float,
+    power: float,
+) -> Curve:
+    """Build the same two-piece family from its mathematical mean and SD."""
+    log_standardized_scale = 0.5 * (
+        special.gammaln(1 / power) - special.gammaln(3 / power)
+    )
+    absolute_first_moment = np.exp(
+        log_standardized_scale
+        + special.gammaln(2 / power)
+        - special.gammaln(1 / power),
+    )
+    difference = skew_ratio - 1 / skew_ratio
+    raw_mean = absolute_first_moment * difference
+    raw_sd = np.hypot(
+        np.sqrt(1 - absolute_first_moment**2) * difference,
+        1,
+    )
+    base_scale = sd / raw_sd
+    mode = mean - base_scale * raw_mean
+    curve = skew_power_exponential(mode, base_scale, skew_ratio, power)
+    return Curve(
+        rf"$m={mean:g},\ s={sd:g},\ r={skew_ratio:g},\ p={power:g}$",
+        curve.pdf,
+    )
+
+
 def shash(mu: float, sigma: float, nu: float, tau: float) -> Curve:
     def pdf(x: Array) -> Array:
         z = (x - mu) / sigma
@@ -586,6 +647,24 @@ CONTINUOUS: tuple[ContinuousChart, ...] = (
         "Power exponential distribution",
         (-5, 5),
         tuple(power_exponential(*p) for p in ((0, 1, 1), (0, 1, 2), (0, 1, 4))),
+    ),
+    ContinuousChart(
+        "skew_power_exponential",
+        "Skew power-exponential (mode/base scale)",
+        (-7, 9),
+        tuple(
+            skew_power_exponential(*p)
+            for p in ((0, 1, 0.5, 2), (0, 1, 1, 2), (0, 1, 2, 2), (0, 1, 2, 1))
+        ),
+    ),
+    ContinuousChart(
+        "skew_power_exponential_mean_sd",
+        "Skew power-exponential (mean/SD)",
+        (-5, 5),
+        tuple(
+            skew_power_exponential_mean_sd(*p)
+            for p in ((0, 1, 0.5, 2), (0, 1, 1, 2), (0, 1, 2, 2), (0, 1, 2, 1))
+        ),
     ),
     ContinuousChart(
         "generalized_gamma",

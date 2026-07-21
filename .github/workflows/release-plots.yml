@@ -15,6 +15,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release-plots-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   generate-plots:
     runs-on: ubuntu-latest
@@ -22,6 +26,8 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install uv and Python
         uses: astral-sh/setup-uv@v7
@@ -42,9 +48,28 @@ jobs:
           INPUT_TAG: ${{ inputs.tag }}
         run: |
           if [ "$GITHUB_EVENT_NAME" = "push" ]; then
-            version=$(sed -nE 's/^version = "([^"]+)"/\1/p' pyproject.toml)
-            test -n "$version"
-            tag="v${version}-build.${GITHUB_RUN_NUMBER}"
+            base_version=$(sed -nE 's/^version = "([0-9]+\.[0-9]+\.[0-9]+)"/\1/p' pyproject.toml)
+            test -n "$base_version"
+
+            latest_version=$(
+              git tag --list 'v*' |
+                sed -nE 's/^v([0-9]+\.[0-9]+\.[0-9]+)$/\1/p' |
+                sort -V |
+                tail -n 1
+            )
+
+            if [ -n "$latest_version" ]; then
+              major=${latest_version%%.*}
+              remainder=${latest_version#*.}
+              minor=${remainder%%.*}
+              patch=${latest_version##*.}
+              next_version="$major.$minor.$((patch + 1))"
+              version=$(printf '%s\n%s\n' "$base_version" "$next_version" | sort -V | tail -n 1)
+            else
+              version="$base_version"
+            fi
+
+            tag="v${version}"
           else
             tag="${EVENT_RELEASE_TAG:-$INPUT_TAG}"
           fi
